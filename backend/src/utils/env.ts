@@ -10,11 +10,7 @@ interface ValidationResult {
   errors: string[];
 }
 
-const REQUIRED_VARS = [
-  'NODE_ENV',
-  'PORT',
-  'JWT_SECRET',
-];
+const REQUIRED_VARS = ['NODE_ENV', 'PORT'];
 
 const AI_PROVIDER_KEYS = {
   GEMINI_API_KEY: 'ENABLE_GEMINI',
@@ -26,24 +22,21 @@ const AI_PROVIDER_KEYS = {
 export function validateEnv(): ValidationResult {
   const errors: string[] = [];
 
-  // Check required vars
+  // Required runtime values
   for (const varName of REQUIRED_VARS) {
     if (!process.env[varName]) {
       errors.push(`Missing required env var: ${varName}`);
     }
   }
 
-  // Check at least ONE AI provider key is configured
-  const hasAnyAIKey = Object.keys(AI_PROVIDER_KEYS).some(
-    (key) => process.env[key]
-  );
+  // Do not hard-fail if no AI provider keys are configured.
+  // Production app should run in degraded / offline mode instead of crashing.
+  const hasAnyAIKey = Object.keys(AI_PROVIDER_KEYS).some((key) => process.env[key]);
   if (!hasAnyAIKey) {
-    errors.push(
-      'At least one AI provider key must be configured (GEMINI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, TOGETHER_API_KEY)'
-    );
+    console.warn('[env] No AI provider keys configured. App will run in degraded mode.');
   }
 
-  // Validate JWT secret length
+  // JWT secret is optional in local/dev but should be at least 32 chars when provided.
   if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
     errors.push('JWT_SECRET must be at least 32 characters');
   }
